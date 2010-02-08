@@ -237,12 +237,17 @@ int anetTcpServer(char *err, int port, char *bindaddr)
         close(s);
         return ANET_ERR;
     }
-    if (listen(s, 511) == -1) { /* the magic 511 constant is from nginx */
+    return s;
+}
+
+int anetListen(char *err, int serversock) {
+    if (listen(serversock, 511) == -1) { /* the magic 511 constant is from nginx */
         anetSetError(err, "listen: %s\n", strerror(errno));
-        close(s);
+        close(serversock);
         return ANET_ERR;
     }
-    return s;
+
+    return 0;
 }
 
 int anetAccept(char *err, int serversock, char *ip, int *port)

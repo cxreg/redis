@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define REDIS_VERSION "1.2.1"
+#define REDIS_VERSION "1.2.2"
 
 #include "fmacros.h"
 #include "config.h"
@@ -6259,6 +6259,8 @@ int main(int argc, char **argv) {
         if (rdbLoad(server.dbfilename) == REDIS_OK)
             redisLog(REDIS_NOTICE,"DB loaded from disk");
     }
+
+    anetListen(server.neterr, server.fd);
     if (aeCreateFileEvent(server.el, server.fd, AE_READABLE,
         acceptHandler, NULL) == AE_ERR) oom("creating file event");
     redisLog(REDIS_NOTICE,"The server is now ready to accept connections on port %d", server.port);
