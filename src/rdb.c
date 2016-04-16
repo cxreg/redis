@@ -1105,6 +1105,7 @@ void loadingProgress(off_t pos) {
 /* Loading finished */
 void stopLoading(void) {
     server.loading = 0;
+    server.has_loaded_data_at_least_once = 1;
 }
 
 /* Track loading progress in order to serve client's from time to time

@@ -1356,6 +1356,8 @@ void createSharedObjects(void) {
         "-BUSY Redis is busy running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE.\r\n"));
     shared.masterdownerr = createObject(REDIS_STRING,sdsnew(
         "-MASTERDOWN Link with MASTER is down and slave-serve-stale-data is set to 'no'.\r\n"));
+    shared.emptyerr = createObject(REDIS_STRING,sdsnew(
+        "-EMPTY Data not loaded yet and slave-serve-empty-data is set to 'no'.\r\n"));
     shared.bgsaveerr = createObject(REDIS_STRING,sdsnew(
         "-MISCONF Redis is configured to save RDB snapshots, but is currently not able to persist on disk. Commands that may modify the data set are disabled. Please check Redis logs for details about the error.\r\n"));
     shared.roslaveerr = createObject(REDIS_STRING,sdsnew(
@@ -1435,6 +1437,7 @@ void initServerConfig(void) {
     server.client_max_querybuf_len = REDIS_MAX_QUERYBUF_LEN;
     server.saveparams = NULL;
     server.loading = 0;
+    server.has_loaded_data_at_least_once = 0;
     server.logfile = zstrdup(REDIS_DEFAULT_LOGFILE);
     server.syslog_enabled = REDIS_DEFAULT_SYSLOG_ENABLED;
     server.syslog_ident = zstrdup(REDIS_DEFAULT_SYSLOG_IDENT);
@@ -1514,6 +1517,7 @@ void initServerConfig(void) {
     server.repl_state = REDIS_REPL_NONE;
     server.repl_syncio_timeout = REDIS_REPL_SYNCIO_TIMEOUT;
     server.repl_serve_stale_data = REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA;
+    server.repl_serve_empty_data = REDIS_DEFAULT_SLAVE_SERVE_EMPTY_DATA;
     server.repl_slave_ro = REDIS_DEFAULT_SLAVE_READ_ONLY;
     server.repl_down_since = 0; /* Never connected, repl is down since EVER. */
     server.repl_disable_tcp_nodelay = REDIS_DEFAULT_REPL_DISABLE_TCP_NODELAY;
@@ -2276,6 +2280,18 @@ int processCommand(redisClient *c) {
         c->cmd->proc != psubscribeCommand &&
         c->cmd->proc != punsubscribeCommand) {
         addReplyError(c,"only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT allowed in this context");
+        return REDIS_OK;
+    }
+
+    /* Only allow INFO and SLAVEOF when slave-serve-empty-data is no and
+     * we are a slave with no data loaded yet. */
+    if (server.masterhost && server.repl_state != REDIS_REPL_CONNECTED &&
+        server.has_loaded_data_at_least_once == 0 &&
+        server.repl_serve_empty_data == 0 &&
+        !(c->cmd->flags & REDIS_CMD_STALE))
+    {
+        flagTransaction(c);
+        addReply(c, shared.emptyerr);
         return REDIS_OK;
     }
 

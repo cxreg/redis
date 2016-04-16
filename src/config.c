@@ -300,6 +300,10 @@ void loadServerConfigFromString(char *config) {
             if ((server.repl_serve_stale_data = yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
             }
+        } else if (!strcasecmp(argv[0],"slave-serve-empty-data") && argc == 2) {
+            if ((server.repl_serve_empty_data = yesnotoi(argv[1])) == -1) {
+                err = "argument must be 'yes' or 'no'"; goto loaderr;
+            }
         } else if (!strcasecmp(argv[0],"slave-read-only") && argc == 2) {
             if ((server.repl_slave_ro = yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
@@ -781,6 +785,11 @@ void configSetCommand(redisClient *c) {
 
         if (yn == -1) goto badfmt;
         server.repl_serve_stale_data = yn;
+    } else if (!strcasecmp(c->argv[2]->ptr,"slave-serve-empty-data")) {
+        int yn = yesnotoi(o->ptr);
+
+        if (yn == -1) goto badfmt;
+        server.repl_serve_empty_data = yn;
     } else if (!strcasecmp(c->argv[2]->ptr,"slave-read-only")) {
         int yn = yesnotoi(o->ptr);
 
@@ -1084,6 +1093,8 @@ void configGetCommand(redisClient *c) {
             server.aof_no_fsync_on_rewrite);
     config_get_bool_field("slave-serve-stale-data",
             server.repl_serve_stale_data);
+    config_get_bool_field("slave-serve-empty-data",
+            server.repl_serve_empty_data);
     config_get_bool_field("slave-read-only",
             server.repl_slave_ro);
     config_get_bool_field("stop-writes-on-bgsave-error",
@@ -1815,6 +1826,7 @@ int rewriteConfig(char *path) {
     rewriteConfigSlaveofOption(state);
     rewriteConfigStringOption(state,"masterauth",server.masterauth,NULL);
     rewriteConfigYesNoOption(state,"slave-serve-stale-data",server.repl_serve_stale_data,REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA);
+    rewriteConfigYesNoOption(state,"slave-serve-empty-data",server.repl_serve_empty_data,REDIS_DEFAULT_SLAVE_SERVE_EMPTY_DATA);
     rewriteConfigYesNoOption(state,"slave-read-only",server.repl_slave_ro,REDIS_DEFAULT_SLAVE_READ_ONLY);
     rewriteConfigNumericalOption(state,"repl-ping-slave-period",server.repl_ping_slave_period,REDIS_REPL_PING_SLAVE_PERIOD);
     rewriteConfigNumericalOption(state,"repl-timeout",server.repl_timeout,REDIS_REPL_TIMEOUT);
